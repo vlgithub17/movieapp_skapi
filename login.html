@@ -1,0 +1,29 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Document</title>
+    <script src="https://cdn.jsdelivr.net/npm/skapi-js@latest/dist/skapi.js"></script>
+    <script>
+        const skapi = new Skapi("ap22R9dA6bQv5YBs9Sdw", "a4dd8739-ceac-4fec-b708-8019b3cf131a");
+    </script>
+</head>
+<body>
+    <!-- login.html -->
+<h1>Login</h1>
+<form action="index.html" onsubmit="skapi.login(event).catch(err=>alert(err.message))">
+    <label>
+        Email
+        <br>
+        <input type="email" name="email" placeholder="your@email.com" required>
+    </label><br><br>
+    <label>
+        Password
+        <br>
+        <input type="password" name="password" placeholder="Login password" required>
+    </label><br><br>
+    <input type="submit" value="Login">
+</form>
+</body>
+</html>

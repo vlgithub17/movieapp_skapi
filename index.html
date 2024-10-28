@@ -1,0 +1,189 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Rate your movie</title>
+    <script src="https://cdn.jsdelivr.net/npm/skapi-js@latest/dist/skapi.js"></script>
+    <script>
+      const skapi = new Skapi(
+        "ap22R9dA6bQv5YBs9Sdw",
+        "a4dd8739-ceac-4fec-b708-8019b3cf131a"
+      );
+    </script>
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <h1 style="display: grid; place-items: center">RATE YOUR MOVIE :)</h1>
+    <br />
+    <header>
+      <form id="form">
+        <input
+          type="text"
+          id="search_input"
+          class="search"
+          placeholder="Search"
+        />
+        <select id="search_options">
+          <option value="movie">Movie</option>
+          <option value="cast">Cast</option>
+        </select>
+        <button id="search_button" onclick="searchMovie(event)">Search</button>
+      </form>
+    </header>
+
+    <main id="main">
+      <div id="ratingDiv"></div>
+    </main>
+
+    <script>
+      // Display all the movies
+      let userId;
+      let movies;
+      skapi.getProfile().then((profile) => {
+        userId = profile.user_id;
+      });
+
+      skapi.getRecords({ table: "movies" }).then((response) => {
+        movies = response.list;
+        displayMovies(movies);
+      });
+
+      function displayMovies(movies) {
+        let mainDiv = document.getElementById("main");
+        mainDiv.innerHTML = ""; // Clear previous list
+        movies.forEach((movie) => {
+          let movieId = movie.record_id;
+          let movieName = movie.data.name
+            .toLowerCase()
+            .replace(/[^a-z0-9.?]/g, "");
+          const movieDiv = document.createElement("div");
+          movieDiv.innerHTML = `
+              <img src="${
+                movie.bin.poster[0].url
+              }" style="width: 150px; height: 200px;">
+              <h3>${movie.data.name}</h3>
+              <p>Actors: ${movie.data.actors.join(", ")}</p>
+            `;
+
+          skapi
+            .getIndexes({ table: "ratings", index: `rating_${movieName}` })
+            .then((response) => {
+              let rating;
+              if (response.list[0] === undefined) {
+                rating = 0;
+              } else {
+                rating = response.list[0].average_number.toFixed(1);
+              }
+
+              const ratingDiv = document.createElement("div");
+              ratingDiv.innerHTML = /*html*/ `
+                <p id=ratingDiv_${movieName}>Rating: ${rating}</p>
+                <label>Rate this movie:</label>
+                <select id="rating-${movieName}">
+                  <option value="1">1</option>
+                  <option value="2">2</option>
+                  <option value="3">3</option>
+                  <option value="4">4</option>
+                  <option value="5">5</option>
+                </select>
+                <button id='rating_button_${movieName}' onclick='rateMovie("${movieName}", document.getElementById("rating-${movieName}").value, "${movieId}")'>Submit Rating</button>
+              `;
+              movieDiv.appendChild(ratingDiv);
+
+              skapi
+                .getRecords({
+                  table: "ratings",
+                  index: {
+                    name: `rating_${movieName}`,
+                    value: 0,
+                    condition: ">",
+                  },
+                  reference: userId,
+                })
+                .then((response) => {
+                  if (response.list.length) {
+                    let ratingButton = document.getElementById(
+                      `rating_button_${movieName}`
+                    );
+                    ratingButton.disabled = true;
+                  }
+                });
+            });
+          mainDiv.appendChild(movieDiv);
+        });
+      }
+
+      // Rate movie function
+      function rateMovie(movieName, userRating, movieId) {
+        skapi
+          .postRecord("", {
+            table: "ratings",
+            index: { name: `rating_${movieName}`, value: parseInt(userRating) },
+            reference: { record_id: movieId },
+          })
+          .then((updatedMovie) => {
+            console.log(updatedMovie);
+            let ratingButton = document.getElementById(
+              `rating_button_${movieName}`
+            );
+            ratingButton.disabled = true;
+          })
+          .catch((error) => {
+            console.error("Error updating movie rating:", error);
+          });
+      }
+
+      // Function to search the movie obviously
+      function searchMovie(event) {
+        event.preventDefault();
+        let input = document.getElementById("search_input").value.toLowerCase().replace(/[ ,]/g, '');
+        let searchOption = document
+          .getElementById("search_options")
+          .value.toLowerCase();
+
+        if (searchOption === "movie") {
+          console.log(input);
+          skapi
+            .getRecords({
+              table: "movies",
+              index: {
+                name: "movieName",
+                value: input,
+                condition: ">=",
+              },
+            })
+            .then((response) => {
+              console.log(response);
+              displayMovies(response.list);
+            });
+        } else if (searchOption === "cast") {
+          skapi
+            .getRecords({
+              table: "actors",
+              index: {  name: "actorName", 
+                        value: input, 
+                        condition: "=" 
+                      },
+            })
+            .then((response) => {
+              if (response.list.length === 0) {
+                alert("No actor found with that name.");
+              }
+              console.log(response);
+              let recordId = response.list[0].record_id
+              skapi
+                .getRecords({
+                  table: "movies",
+                  tag: recordId,
+                })
+                .then((response) => {
+                  console.log(response);
+                  displayMovies(response.list);
+                });
+            })
+        }
+      }
+    </script>
+  </body>
+</html>
